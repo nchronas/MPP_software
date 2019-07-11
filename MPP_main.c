@@ -61,6 +61,8 @@
 extern UART_Handle uart_dbg_bus;
 extern UART_Handle uart_pq9_bus;
 
+extern SPI_Handle spi_dpot;
+
 bool start_flag = false;
 
 /*
@@ -113,6 +115,83 @@ void *mainThread(void *arg0)
     start_flag = true;
 
     uint32_t sen_loop = 100000;
+
+    SPI_Transaction spiTransaction;
+
+
+    char b1[6] = { 0xB0, 0x00, 0x00, 0x00, 0x00, 0x00};
+    char t1[3] = { 0xB1, 0x00, 0x00};
+    char b2[6] = { 0xB0, 0x00, 0x00, 0x00, 0x00, 0x00};
+    //char b1[3] = {  0x00, 0x00, 0xB0};
+
+     int val = 0;
+
+    while(1) {
+        b1[0] = 0xB0;
+
+        spiTransaction.count = 3;
+        spiTransaction.txBuf = (void *)b1;
+        spiTransaction.rxBuf = (void *)b2;
+
+        GPIO_write(DPOT_CS, 0);
+        SPI_transfer(spi_dpot, &spiTransaction);
+        GPIO_write(DPOT_CS, 1);
+
+        usleep(100);
+
+        spiTransaction.count = 3;
+        spiTransaction.txBuf = (void *)t1;
+        spiTransaction.rxBuf = (void *)b2;
+
+        GPIO_write(DPOT_CS, 0);
+        SPI_transfer(spi_dpot, &spiTransaction);
+        GPIO_write(DPOT_CS, 1);
+
+        usleep(100);
+
+        val += 10;
+        b1[1] = (val >> 8);
+
+        b1[2] = (val * 0x00FF);
+
+        t1[1] = (val >> 8);
+
+        t1[2] = (val * 0x00FF);
+
+        usleep(100);
+
+        b1[0] = 0xA0;
+               b1[1] = 0;
+               b1[2] = 0;
+
+               spiTransaction.count = 6;
+               spiTransaction.txBuf = (void *)b1;
+               spiTransaction.rxBuf = (void *)b2;
+
+               GPIO_write(DPOT_CS, 0);
+               SPI_transfer(spi_dpot, &spiTransaction);
+               GPIO_write(DPOT_CS, 1);
+
+               usleep(30);
+
+               b1[0] = 0;
+               b1[1] = 0;
+               b1[2] = 0;
+
+                       spiTransaction.count = 3;
+                       spiTransaction.txBuf = (void *)b1;
+                       spiTransaction.rxBuf = (void *)b2;
+
+                       GPIO_write(DPOT_CS, 0);
+                       SPI_transfer(spi_dpot, &spiTransaction);
+                       GPIO_write(DPOT_CS, 1);
+
+
+               sprintf(msg, "W: %d %d %d", b2[0], b2[1], b2[2]);
+               usleep(100);
+
+    }
+
 
     /* Loop forever echoing */
     while (1) {
